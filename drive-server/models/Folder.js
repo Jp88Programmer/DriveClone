@@ -7,7 +7,7 @@ const FolderSchema = new mongoose.Schema({
     },
     size:{
         type:Number,
-        required:true
+        default:0
     },
     createdDate:{
         type:Date,
@@ -22,3 +22,5 @@ const FolderSchema = new mongoose.Schema({
 
 
 const Folders = mongoose.model("Folders", FolderSchema);
+
+export default Folders
