@@ -1,7 +1,8 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect } from "react";
 import styled from "styled-components";
 import { GlobalContext } from "../../App";
 import Files from "../../assets/Files-Icon-PNG-HD-Quality.png";
+import axios from "axios";
 
 const ShowFilesContainer = styled("div")`
   .show-files {
@@ -48,8 +49,19 @@ const ShowFilesContainer = styled("div")`
   }
 `;
 const ShowFiles = () => {
-  const { filesList } = useContext(GlobalContext);
+  const { filesList, isOpen, isOpenUpload, setIsOpenUpload } =
+    useContext(GlobalContext);
   console.log(filesList);
+  useEffect(() => {
+    const getFiles = async () => {
+      console.log("this is the console");
+      const res = await axios
+        .get("http://localhost:5000/get-files")
+
+      console.log("To retrive the data",res?.data);
+      // setIsSelected(false);
+    };
+  }, [isOpenUpload]);
   return (
     <ShowFilesContainer>
       {filesList.length > 0 && (
@@ -63,7 +75,6 @@ const ShowFiles = () => {
                   <div className="file-box">
                     <div className="file-name">
                       <img src={file.data} alt="file" />
-                      {/* <iframe src={file.data} className="iframe" /> */}
                       {file.name.length > 10
                         ? file.name.substring(0, 6) +
                           "..." +
