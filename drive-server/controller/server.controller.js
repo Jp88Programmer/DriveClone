@@ -3,14 +3,13 @@ import Folders from "../models/Folder.js";
 import path from "path";
 import Grid from "gridfs-stream";
 import fs from "fs";
-
+import { gridFiles, gridChunks } from "../models/Files.js";
 const connection = mongoose.connection;
-// Grid.mongo = mongoose.mongo;
-// const gfs = Grid(mongoose.connection.db, mongoose.mongo);
-// Grid.mongo = mongoose.mongo;
-const db = mongoose.connection.db;
-const mongo = mongoose.mongo;
-var gfs = Grid(db,mongo);
+let gfs;
+connection.once("open", () => {
+  gfs = Grid(connection.db, mongoose.mongo);
+  gfs.collection("uploads");
+});
 
 async function folderCreate(req, res, next) {
   try {
@@ -44,50 +43,46 @@ async function uploadFiles(req, res, next) {
 }
 
 async function getFiles(req, res, next) {
-  // const collection = connection.db.collection("Drive");
-  // const drive = mongoose.connection.collections;
-  // console.log("collection",drive);
-  // const data = await Drive.find();
-
-  // console.log("this is the data", data);
-  // res.send("data");
-  // connection.once("open", async function () {
-  //   const collection = connection.db.collection("Drive/uploadfiles");
-  //   collection.find({}).toArray(function (err, data) {
-  //     console.log("this is the data",data);
-  //     res.send("hello world");
-  //   });
-  // });
-  // function find(name, cb) {
-  //   const collectionName = mongoose.connection.db.collection(name);
-  //   console.log("this is the collection", collectionName);
-  //   const data = collectionName.find({});
-  //   console.log("this is the data", data);
-  //   res.send("hello world");
-  // }
-  // find("uploads.files");
-  // let gfg;
-
-  // connection.once("open", function () {
-  //   gfs = Grid(mongoose.connection.db, mongoose.mongo);
-  // });
-  var dirname = path.dirname(__dirname);
-  var filename = req.file.filename;
-  var pathName = req.file.path;
-  var type = req.file.mimetype;
-  var read_stream = fs.createReadStream(dirname + "/" + pathName);
-
-  var writestream = gfs.createWriteStream({
-    _id: filename,
-    filename: req.file.originalname,
-    mode: "w",
-    content_type: type,
+  // add fetch the document data which on chnunk base to convert into base64 contenet
+  // 
+  const gridFilesArr = await gridFiles.find();
+  let Files = [];
+  gridFilesArr.forEach(async (file) => {
+    const readStream = gridChunks
+      .find({
+        files_id: file._id,
+      })
+      .cursor();
+    let bufs;
+    readStream
+      .eachAsync(async (doc) => {
+        // Process each document
+        // console.log(typeof doc);
+        // bufs.push(doc.join(""));
+        // bufs += doc.data.toString()
+        bufs = doc.data.toString("base64");
+        // bufs.push(doc)
+      })
+      .then(() => {
+        // Stream ended
+        console.log("Stream ended");
+        // console.log("this is ", bufs);
+        // var fbuf = Buffer.concat(bufs);
+        // var File = fbuf.toString("base64");
+        Files.push(bufs);
+        // return res.send(bufs);
+      })
+      .catch((err) => {
+        console.error("Error reading stream:", err);
+        res.send(err);
+      });
   });
-  read_stream.pipe(writestream);
-
-  writestream.on("close", function (file) {
-    res.status(200).json({ filename: filename });
-  });
+  console.log(Files);
+  if (Files.length > 0) {
+    res.send(Files);
+  } else {
+    res.send("hello world");
+  }
 }
 async function uploadFilesFromGridfs(req, res, next) {
   console.log(req.files);
